@@ -147,12 +147,12 @@ const initializeTCPServer = () => {
             ID: "30",
             SIREN_MODE: Boolean(jsonData.SIREN_MODE),
             T1: parseSensorValue(Average).toFixed(2),
-            // T2: parseSensorValue(jsonData.T2),
-            // T3: parseSensorValue(jsonData.T3),
-            // T4: parseSensorValue(jsonData.T4),
-            // T5: parseSensorValue(jsonData.T5),
-            // T6: parseSensorValue(jsonData.T6),
-            // T7: parseSensorValue(jsonData.T7)
+            T3: parseSensorValue(Average).toFixed(2),
+            T4: parseSensorValue(Average).toFixed(2),
+            T2: parseSensorValue(Average).toFixed(2),
+            T5: parseSensorValue(Average).toFixed(2),
+            T6: parseSensorValue(Average).toFixed(2),
+            T7: parseSensorValue(Average).toFixed(2)
           });
 
           // console.log("New Sensor Data:", newSensors);
