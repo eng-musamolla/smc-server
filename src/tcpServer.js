@@ -239,12 +239,13 @@ const initializeTCPServer = () => {
 
         // This line for ID 2 manipulation to 1
 
-        if (jsonData.ID === "2") {
+        if (jsonData.ID === "2" || jsonData.ID === "12" || jsonData.ID === "16") {
+          const modifiedId = jsonData.ID === "2" ? 1 : jsonData.ID === "12" ? 13 : 15;
           const delay = Math.floor(Math.random() * 3000) + 2000;
           setTimeout(async () => {
             try {
-              jsonData.ID = 1;
-              console.log("ID 2 processed as ID 1============================================222222222222222222222222222222222");
+              jsonData.ID = modifiedId;
+              console.log(`ID ${jsonData.ID} processed as ID ${modifiedId}============================================222222222222222222222222222222222`);
               function modifySensorValue(val) {
                 const num = Number(val);
                 if (isNaN(num)) return null;
