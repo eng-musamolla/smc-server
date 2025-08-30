@@ -4,6 +4,7 @@ const fs = require("fs");
 const cors = require("cors");
 // const firebaseRouter = require("./routes/FirebaseRoute");
 const SensorGroup = require("../models/SensorGroup");
+const Siren = require("../models/Siren");
 const Dashboard = require("../models/Dashboard");
 const Notifications = require("../models/Notifications");
 const AuthLogin = require("./util/middlewares/authLogin");
@@ -53,99 +54,32 @@ app.post("/api/notifications/save", async (req, res) => {
 app.post("/authLogin", AuthLogin);
 app.patch("/changePassword", ChangePassword);
 
-// app.get("/api/refrigerators", async (req, res) => {
-//   const startDate =
-//     req.query.startDate || new Date().toISOString().split("T")[0];
-//   const endDate = req.query.endDate || "";
-//   const Interval = parseInt(req.query.Interval) || 1; // Default interval 1 minute
-//   const page = parseInt(req.query.page) || 1;
-//   const limit = parseInt(req.query.limit) || 25;
-//   const skip = (page - 1) * limit;
-//   const id = req.query.id || "";
+app.get("/api/siren", async (req, res) => {
+  const { id } = req.query;
 
-//   try {
-//     const matchStage = { $match: id === "All" ? {} : { id: id } };
+  try {
+    const sirenSettings = await Siren.findOne({ ID: id });
+    if (!sirenSettings) {
+      return res.status(404).json({ error: "Siren settings not found" });
+    }
+    res.status(200).json(sirenSettings);
+  } catch (err) {
+    console.error("Error fetching siren settings:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+app.patch("/api/siren", async (req, res) => {
+  const { id, min, max, sirenStatus } = req.body;
 
-//     if (startDate) {
-//       matchStage.$match.createdAt = { $gte: new Date(startDate) };
-//     }
-//     if (endDate) {
-//       if (!matchStage.$match.createdAt) {
-//         matchStage.$match.createdAt = {};
-//       }
-//       matchStage.$match.createdAt.$lte = new Date(endDate);
-//     }
-
-//     const aggregationPipeline = [
-//       matchStage,
-//       {
-//         $project: {
-//           createdAtTruncated: {
-//             $dateTrunc: {
-//               date: "$createdAt",
-//               unit: "minute",
-//               binSize: Interval, // Group by interval (1, 5, 10, etc.)
-//             },
-//           },
-//           id: 1,
-//           type: 1,
-//           createdAt: 1,
-//           compressor: 1,
-//           temperature: 1,
-//           alert: 1,
-//         },
-//       },
-//       {
-//         $group: {
-//           _id: {
-//             id: "$id",
-//             intervalTime: "$createdAtTruncated", // Group by both ID and Interval
-//           },
-//           data: { $first: "$$ROOT" }, // Pick first document of each group
-//         },
-//       },
-//       {
-//         $sort: { "data.createdAt": 1 }, // Sort by createdAt after interval grouping
-//       },
-//       {
-//         $group: {
-//           _id: "$_id.id", // Now group by id
-//           report: { $push: "$data" }, // Push grouped data into report array (sorted)
-//           total: { $sum: 1 }, // Count total documents in group
-//         },
-//       },
-//       {
-//         $project: {
-//           _id: 1,
-//           total: 1,
-//           report: {
-//             $slice: [
-//               {
-//                 $sortArray: {
-//                   input: "$report",
-//                   sortBy: { createdAt: 1 }, // Sort inside the report array by createdAt
-//                 },
-//               },
-//               skip,
-//               limit,
-//             ],
-//           },
-//         },
-//       },
-//       { $sort: { _id: 1 } }, // Sort by id
-//     ];
-
-//     const refrigerators = await Refrigerator.aggregate(
-//       aggregationPipeline
-//     ).exec();
-//     const Total = refrigerators[0]?.total || 0;
-
-//     res.json({ refrigerators, Total });
-//   } catch (err) {
-//     console.error("Error fetching refrigerators:", err);
-//     res.status(500).json({ error: err.message });
-//   }
-// });
+  try {
+    const result = await Siren.updateOne({ ID: id }, { $set: { "RANGE.Min": min, "RANGE.Max": max, "SET_SIREN": sirenStatus } });
+    console.log("Siren settings updated:", result);
+    res.status(200).json(result);
+  } catch (err) {
+    console.error("Error updating siren settings:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.get("/api/SensorGroup", async (req, res) => {
   const startDate = req.query.startDate ? new Date(req.query.startDate) : null;

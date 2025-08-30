@@ -97,6 +97,12 @@ const initializeTCPServer = () => {
           clients.set(clientID, socket); // Store or update the socket by ID
         }
         // console.log("Received JSON data:", jsonData);
+        if (!jsonData.ID) {
+          // Handle case where ID is not present
+          console.warn("No ID found in JSON data:", jsonData);
+          // console.warn("socket:::", socket);
+          return;
+        }
 
         if (jsonData.ID === "29") {
           console.log("Received data for ID 29:", jsonData);
@@ -162,7 +168,7 @@ const initializeTCPServer = () => {
 
 
 
-          console.log("Overall Average Temperature (T1-T7, ID 1-28)**************:", Average);
+          // console.log("Overall Average Temperature (T1-T7, ID 1-28)**************:", Average);
 
           // Upsert Siren document
           await Siren.updateOne(
@@ -170,29 +176,71 @@ const initializeTCPServer = () => {
             {
               $set: {
                 SIREN_MODE: Boolean(jsonData.SIREN_MODE),
-                // average: parseInt(Average).toFixed(2), // Ensure average is a number
-                HUMIDITY: jsonData.HUMIDITY,
+                AVERAGE: Average.toFixed(2)
               }
             },
             { upsert: true }
           );
 
-          const sirenData = await Siren.findOne({ ID: jsonData.ID });
+          let sirenData = await Siren.findOne({ ID: jsonData.ID });
 
-          console.log("sirenData", sirenData);
+          console.log("sirenData::::::::::::::::::::::::::::::", sirenData);
+          console.log("Average::::::::::::::::::::::::::::::::", Average.toFixed(2));
+
+          let response = {
+            // "SET_PORT": 6666,
+            // "SET_DOMAIN": "smc.littlesparkiot.com",
+            "SET_RANGE": 40,
+            // "SET_INTERVAL": sirenData ? sirenData.SET_INTERVAL : 1000,
+            // "SET_SIREN": sirenData ? sirenData.SET_SIREN : 0,
+            "SET_SIREN": 0,
+            // "PARAMETERS": true,
+            "SIREN_TEST": 0,
+            // "SIREN_TEST": sirenData ? sirenData.SIREN_TEST : 0,
+          }
 
           if (!socket.destroyed) {
 
-            if (Average >= sirenData.average) {
-              socket.write(JSON.stringify({ "SIREN_TEST": true }));
-              console.log("SIREN_TEST triggered for client ID:======================", jsonData.ID);
+            console.log("::::::::::::::::::::::::::::::", Average.toFixed(2), sirenData.RANGE.Min, sirenData.RANGE.Max, sirenData.SET_SIREN);
+
+            if ((Average < sirenData.RANGE.Min || Average > sirenData.RANGE.Max) && (sirenData.SET_SIREN === true)) {
+              socket.write(JSON.stringify(response));
+              console.log("===========================", jsonData.ID, response);
+
+              // Set 5-minute interval to check once
+              if (!global.sirenNotificationScheduled) {
+                global.sirenNotificationScheduled = true;
+                setTimeout(() => {
+                  global.sirenNotificationScheduled = false;
+                }, 20 * 60 * 1000); // 10 minutes
+
+                // Your notification logic here
+                console.log("Siren notification triggered with 5-minute delay-------------------------------------------------------------");
+                // Send SMS notification
+                const smsMessage = `ALERT: CTG Warehouse temp ${Average < sirenData.RANGE.Min ? 'low' : 'high'}. Current: ${Average.toFixed(2)}°C. Action needed.`;
+
+                try {
+                  const smsUrl = `http://118.67.213.114:3775/sendtext?apikey=97f8ab9eedccacca&secretkey=70d4bcce&callerID=8801847&toUser=8801629443131,8801811000006,8801829489396&messageContent=${encodeURIComponent(smsMessage)}`;
+
+                  const response = await fetch(smsUrl);
+                  if (response.ok) {
+                    console.log(`SMS sent to 8801629443131`);
+                  } else {
+                    console.error(`Failed to send SMS to 8801629443131`);
+                  }
+                } catch (error) {
+                  console.error('Failed to send SMS notifications:', error.message);
+                }
+
+
+
+
+              }
             }
-            sirenData.SIREN_TEST ? socket.write(JSON.stringify({ "SIREN_TEST": true })) : null;
+
+
+            return; // Skip further processing for ID 29
           }
-
-
-
-          return; // Skip further processing for ID 29
         }
 
         // if (jsonData.ID === "1") {
@@ -245,7 +293,7 @@ const initializeTCPServer = () => {
           setTimeout(async () => {
             try {
               jsonData.ID = modifiedId;
-              console.log(`ID ${jsonData.ID} processed as ID ${modifiedId}============================================222222222222222222222222222222222`);
+              // console.log(`ID ${jsonData.ID} processed as ID ${modifiedId}============================================222222222222222222222222222222222`);
               function modifySensorValue(val) {
                 const num = Number(val);
                 if (isNaN(num)) return null;
@@ -292,7 +340,7 @@ const initializeTCPServer = () => {
                 { upsert: true }
               );
 
-              console.log("ID 17 processed as ID 19 and ID 3 processed as ID 1");
+              // console.log("ID 17 processed as ID 19 and ID 3 processed as ID 1");
 
             } catch (error) {
             }
